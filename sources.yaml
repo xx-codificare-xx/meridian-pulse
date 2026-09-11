@@ -1,0 +1,95 @@
+version: 1
+
+rss:
+  - name: STAT News
+    url: https://www.statnews.com/feed/
+    type: rss
+    basis: publisher-operated RSS feed
+    item_cap: 20
+    active: true
+  - name: Fierce Healthcare
+    url: https://www.fiercehealthcare.com/rss/xml
+    type: rss
+    basis: publisher-operated RSS feed
+    item_cap: 20
+    active: true
+  - name: KFF Health News
+    url: https://kffhealthnews.org/feed/
+    type: rss
+    basis: publisher-operated RSS feed
+    item_cap: 20
+    active: true
+  - name: Kaiser Health
+    url: https://kaiserhealthnews.org/feed/
+    type: rss
+    basis: publisher-operated RSS feed
+    item_cap: 20
+    active: true
+  - name: NPR Health
+    url: https://feeds.npr.org/1128/rss.xml
+    type: rss
+    basis: publisher-operated RSS feed
+    item_cap: 20
+    active: true
+  - name: CDC Newsroom
+    url: https://tools.cdc.gov/api/v2/resources/media/132608.rss
+    type: rss
+    basis: government RSS feed
+    item_cap: 20
+    active: true
+  - name: Google - Medicare
+    url: https://news.google.com/rss/search?q=Medicare+Advantage&hl=en-US&gl=US&ceid=US:en
+    type: rss
+    basis: topic RSS search
+    item_cap: 20
+    active: true
+  - name: Google - Health Insurance
+    url: https://news.google.com/rss/search?q=health+insurance+payer&hl=en-US&gl=US&ceid=US:en
+    type: rss
+    basis: topic RSS search
+    item_cap: 20
+    active: true
+  - name: Google - CMS Policy
+    url: https://news.google.com/rss/search?q=CMS+healthcare+policy&hl=en-US&gl=US&ceid=US:en
+    type: rss
+    basis: topic RSS search
+    item_cap: 20
+    active: true
+  - name: Google - ACA
+    url: https://news.google.com/rss/search?q=ACA+Affordable+Care+Act&hl=en-US&gl=US&ceid=US:en
+    type: rss
+    basis: topic RSS search
+    item_cap: 20
+    active: true
+
+sec_companies:
+  - name: UnitedHealth
+    cik: "0000731766"
+    type: sec_edgar
+    basis: public government API
+    item_cap: 20
+    active: true
+  - name: Elevance
+    cik: "0001156039"
+    type: sec_edgar
+    basis: public government API
+    item_cap: 20
+    active: true
+  - name: CVS Health
+    cik: "0000064803"
+    type: sec_edgar
+    basis: public government API
+    item_cap: 20
+    active: true
+  - name: Humana
+    cik: "0000049071"
+    type: sec_edgar
+    basis: public government API
+    item_cap: 20
+    active: true
+  - name: Cigna
+    cik: "0001739940"
+    type: sec_edgar
+    basis: public government API
+    item_cap: 20
+    active: true

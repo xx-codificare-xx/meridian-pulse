@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script src="https://unpkg.com/streamlit-component-lib@latest/dist/index.js"></script>
+  <style>
+    :root {
+      --accent: #1b4f8a;
+      --panel: #ffffff;
+      --text: #1a1a1a;
+      --muted: #6b6b6b;
+      --border: #e8e4dc;
+      --user: #eef2f7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; font-family: Inter, Arial, sans-serif; }
+    #root { position: relative; min-height: 80px; }
+    .launcher {
+      position: absolute; right: 24px; bottom: 24px; z-index: 2;
+      width: 58px; height: 58px; border: 0; border-radius: 50%;
+      background: var(--accent); color: white; cursor: pointer;
+      font-size: 28px; box-shadow: 0 8px 24px rgba(0,0,0,.22);
+    }
+    .panel {
+      position: absolute; right: 24px; bottom: 94px; z-index: 1;
+      width: min(380px, calc(100vw - 32px));
+      height: min(560px, calc(100vh - 130px));
+      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--panel); color: var(--text);
+      border: 1px solid var(--border); border-radius: 16px;
+      box-shadow: 0 14px 42px rgba(0,0,0,.2);
+    }
+    .header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px; background: var(--accent); color: white;
+    }
+    .title { font-weight: 700; font-size: 16px; }
+    .subtitle { margin-top: 3px; font-size: 11px; opacity: .8; }
+    .icon-button {
+      border: 0; background: transparent; color: inherit;
+      cursor: pointer; font-size: 20px;
+    }
+    .messages { flex: 1; overflow-y: auto; padding: 14px; }
+    .empty {
+      color: var(--muted); font-size: 13px; text-align: center;
+      padding: 28px 12px;
+    }
+    .message {
+      max-width: 88%; margin: 0 0 10px; padding: 9px 11px;
+      border-radius: 12px; font-size: 13px; line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .user { margin-left: auto; background: var(--user); }
+    .assistant {
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+    }
+    .footer { padding: 10px; border-top: 1px solid var(--border); }
+    .context { color: var(--muted); font-size: 11px; margin-bottom: 7px; }
+    form { display: flex; gap: 7px; }
+    input {
+      min-width: 0; flex: 1; padding: 10px; border: 1px solid var(--border);
+      border-radius: 9px; color: var(--text); background: var(--panel);
+    }
+    .send, .clear {
+      border: 0; border-radius: 9px; cursor: pointer;
+      color: white; background: var(--accent);
+    }
+    .send { padding: 0 12px; }
+    .clear {
+      margin-top: 8px; padding: 6px 10px;
+      font-size: 11px; background: transparent; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script>
+    const root = document.getElementById("root");
+
+    function send(value) {
+      Streamlit.setComponentValue(value);
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, character => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;",
+        '"': "&quot;", "'": "&#039;"
+      }[character]));
+    }
+
+    function render(args) {
+      const dark = Boolean(args.dark);
+      document.documentElement.style.setProperty(
+        "--accent", dark ? "#4a90d9" : "#1b4f8a"
+      );
+      document.documentElement.style.setProperty(
+        "--panel", dark ? "#1c1e26" : "#ffffff"
+      );
+      document.documentElement.style.setProperty(
+        "--text", dark ? "#f0eee9" : "#1a1a1a"
+      );
+      document.documentElement.style.setProperty(
+        "--muted", dark ? "#9b9b9b" : "#6b6b6b"
+      );
+      document.documentElement.style.setProperty(
+        "--border", dark ? "#2e3140" : "#e8e4dc"
+      );
+      document.documentElement.style.setProperty(
+        "--user", dark ? "#2e3140" : "#eef2f7"
+      );
+
+      const messages = Array.isArray(args.messages) ? args.messages : [];
+      root.innerHTML = `
+        ${args.open ? `
+          <section class="panel">
+            <header class="header">
+              <div>
+                <div class="title">Ask Meridian</div>
+                <div class="subtitle">Your healthcare AI assistant</div>
+              </div>
+              <button class="icon-button" id="close"
+                      aria-label="Close chatbot">×</button>
+            </header>
+            <div class="messages" id="messages">
+              ${messages.length ? messages.map(message => `
+                <div class="message ${
+                  message.role === "user" ? "user" : "assistant"
+                }">${escapeHtml(message.content)}</div>
+              `).join("") : `
+                <div class="empty">
+                  Ask about the latest healthcare intelligence.
+                </div>
+              `}
+            </div>
+            <div class="footer">
+              <div class="context">${
+                args.article_count
+                  ? `Connected to ${args.article_count} scored articles`
+                  : "Fetch news for full context"
+              }</div>
+              <form id="form">
+                <input id="query" aria-label="Message"
+                       placeholder="Ask anything..." autocomplete="off">
+                <button class="send" type="submit">Send</button>
+              </form>
+              <button class="clear" id="clear" type="button">Clear chat</button>
+            </div>
+          </section>
+        ` : ""}
+        <button class="launcher" id="launcher"
+                aria-label="${args.open ? "Close" : "Open"} chatbot">${
+                  args.open ? "×" : "💬"
+                }</button>
+      `;
+
+      document.getElementById("launcher").onclick = () => send({
+        type: "toggle", open: !args.open
+      });
+      if (!args.open) return;
+
+      document.getElementById("close").onclick = () => send({
+        type: "toggle", open: false
+      });
+      document.getElementById("clear").onclick = () => send({type: "clear"});
+      document.getElementById("form").onsubmit = (event) => {
+        event.preventDefault();
+        const input = document.getElementById("query");
+        if (input.value.trim()) {
+          send({type: "submit", query: input.value});
+        }
+      };
+      const messagesBox = document.getElementById("messages");
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+      document.getElementById("query").focus();
+    }
+
+    Streamlit.events.addEventListener(Streamlit.RENDER_EVENT, event => {
+      render(event.detail.args || {});
+      Streamlit.setFrameHeight(event.detail.args.open ? 650 : 90);
+    });
+    Streamlit.setComponentReady();
+  </script>
+</body>
+</html>

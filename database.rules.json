@@ -1,0 +1,27 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "articles": {
+      ".read": true,
+      ".indexOn": [
+        "published_at",
+        "type"
+      ]
+    },
+    "sec_filings": {
+      ".read": true,
+      ".indexOn": [
+        "cik",
+        "form_type",
+        "filed_at"
+      ]
+    },
+    "transcripts": {
+      ".read": true
+    },
+    "meta": {
+      ".read": true
+    }
+  }
+}

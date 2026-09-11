@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: meridian-pulse-api
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: LLM_API_MODE
+        sync: false
+      - key: LLM_PROVIDER
+        sync: false
+      - key: LLM_MODEL_PREFILTER
+        sync: false
+      - key: LLM_MODEL_SCORER
+        sync: false
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: FIREBASE_SA_B64
+        sync: false
+      - key: FIREBASE_DATABASE_URL
+        value: https://meridian-pulse-94152-default-rtdb.firebaseio.com
+      - key: CORS_ORIGINS
+        sync: false
+      - key: CHAT_SHARED_SECRET
+        sync: false
+      - key: IP_HASH_SALT
+        sync: false
+      - key: DAILY_TOKEN_BUDGET
+        value: "5000"
