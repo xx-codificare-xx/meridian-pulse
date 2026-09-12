@@ -90,6 +90,16 @@ def health() -> HealthResponse:
     return HealthResponse(status="ok")
 
 
+@app.get("/")
+def root() -> dict[str, str]:
+    return {
+        "service": "Meridian Pulse API",
+        "status": "ok",
+        "health": "/health",
+        "docs": "/docs",
+    }
+
+
 @app.post("/chat", response_model=ChatResponse)
 @limiter.limit(f"{settings.chat_per_day}/day")
 @limiter.limit(f"{settings.chat_per_minute}/minute")

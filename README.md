@@ -188,6 +188,11 @@ VITE_API_BASE_URL=https://<your-render-service>.onrender.com
 The workflow also sets the Firebase database URL and the production Vite base
 path.
 
+Render hosts the FastAPI backend only. Its public URL is not the dashboard
+website; `/health` and `/docs` are the relevant API pages. The Pages workflow
+uses the `VITE_API_BASE_URL` repository variable when present and falls back to
+`https://meridian-pulse.onrender.com`.
+
 ### Render
 
 `render.yaml` defines the FastAPI service. Configure the following values in
