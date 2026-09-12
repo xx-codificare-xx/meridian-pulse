@@ -122,6 +122,12 @@ def chat(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:
+        error_text = str(error).lower()
+        if "insufficient" in error_text or "quota" in error_text or "balance" in error_text:
+            raise HTTPException(
+                status_code=503,
+                detail="The AI provider has insufficient credits. Add provider credits and try again.",
+            ) from error
         raise HTTPException(status_code=502, detail="Chat provider unavailable.") from error
     if actual_tokens > estimated_tokens:
         _reserve_daily_tokens(actual_tokens - estimated_tokens)
