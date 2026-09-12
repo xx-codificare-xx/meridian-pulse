@@ -1,6 +1,6 @@
 beautifulsoup4
 lxml
-firebase-admin<7
+firebase-admin<8
 fastapi
 feedparser
 fpdf2
