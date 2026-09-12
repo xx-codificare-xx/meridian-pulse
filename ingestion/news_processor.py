@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 from engine.tag_scorer import score_all_articles
-from ingestion.firestore_utils import parse_utc_date, title_hash, url_hash
+from ingestion.firestore_utils import canonical_title, parse_utc_date, title_hash, url_hash
 from ingestion.rss_fetcher import fetch_all_rss
 from ingestion.sec_fetcher import fetch_all_sec, summarize_filing
 
@@ -31,7 +31,7 @@ def fetch_all_news(selected_tags: list | None = None, progress_callback=None) ->
             if article.get("type") == "sec_filing"
             else url_hash(article["url"])
         )
-        title_key = title_hash(article.get("title", ""))
+        title_key = title_hash(canonical_title(article.get("title", "")))
         if key in batch_urls or title_key in batch_titles:
             skipped += 1
             continue

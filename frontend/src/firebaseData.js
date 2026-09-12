@@ -19,16 +19,12 @@ export function readRecentArticles() {
   return readPath("articles", {
     orderBy: JSON.stringify("published_at"),
     startAt: JSON.stringify(start),
-    limitToLast: "50",
   });
 }
 
 export function readRecentFilings() {
-  const start = new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString();
   return readPath("sec_filings", {
     orderBy: JSON.stringify("filed_at"),
-    startAt: JSON.stringify(start),
-    limitToLast: "50",
   });
 }
 
@@ -39,20 +35,25 @@ export async function readLastRun() {
 }
 
 export async function analyzeTranscript(file) {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
   const formData = new FormData();
   formData.append("upload", file);
-  const response = await fetch(`${apiBase}/transcripts/analyze`, {
-    method: "POST",
-    body: formData,
-  });
+  let response;
+  try {
+    response = await fetch(`${apiBase}/transcripts/analyze`, {
+      method: "POST",
+      body: formData,
+    });
+  } catch {
+    throw new Error(`Cannot connect to the Meridian API at ${apiBase}.`);
+  }
   const body = await response.json();
   if (!response.ok) throw new Error(body.detail || "Transcript analysis failed.");
   return body;
 }
 
 export async function readBundledTranscripts() {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
   const response = await fetch(`${apiBase}/transcripts/bundled`);
   if (!response.ok) throw new Error(`Transcript list failed (${response.status}).`);
   return response.json();

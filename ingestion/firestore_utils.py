@@ -31,6 +31,13 @@ def title_hash(title: str) -> str:
     return hashlib.sha256(" ".join(words).encode("utf-8")).hexdigest()
 
 
+def canonical_title(title: str) -> str:
+    value = re.sub(r"\s+", " ", (title or "").lower()).strip()
+    value = re.sub(r"^(google\s*-\s*[^:]+:\s*)", "", value)
+    value = re.sub(r"\s+-\s+(stat|fierce healthcare|yahoo)$", "", value)
+    return " ".join(re.findall(r"[a-z0-9]+", value))
+
+
 def parse_utc_date(value: object, fallback: datetime | None = None) -> datetime:
     fallback = fallback or datetime.now(timezone.utc)
     if isinstance(value, datetime):

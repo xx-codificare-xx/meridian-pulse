@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import json
+import re
 import zipfile
 from pathlib import Path
 
@@ -45,11 +46,40 @@ def analyze_transcript(filename: str, content: bytes) -> dict:
     if not transcript.strip():
         raise ValueError("Transcript contains no readable text.")
 
-    raw = ask_llm(
-        TRANSCRIPT_ANALYSIS_PROMPT.format(transcript=transcript[:5000])
-    )
+    prompt = f"""Return ONLY valid JSON, with concise values and no markdown.
+Use exactly this shape, with no more than one item in each array:
+{{"pulse_check":"short summary","green_signals":["one signal"],"red_signals":["one risk"],"future_horizon":["one outlook"],"data_spotlight":["one metric"],"speakers":[],"company":"unknown","period":"unknown"}}
+Analyze this transcript excerpt:
+{transcript[:1000]}"""
+    raw = ask_llm(prompt, max_tokens=3000)
     cleaned = raw.replace("```json", "").replace("```", "").strip()
-    result = json.loads(cleaned)
+    try:
+        result = json.loads(cleaned)
+    except json.JSONDecodeError:
+        compact_prompt = f"""Return ONLY valid JSON, with concise values and no markdown.
+{{"pulse_check":"short summary","green_signals":["one signal"],"red_signals":["one risk"],"future_horizon":["one outlook"],"data_spotlight":["one metric"],"speakers":[],"company":"unknown","period":"unknown"}}
+Transcript excerpt:
+{transcript[:700]}"""
+        compact = ""
+        try:
+            compact = ask_llm(compact_prompt, max_tokens=3000)
+            compact = compact.replace("```json", "").replace("```", "").strip()
+            result = json.loads(compact)
+        except (RuntimeError, ValueError, json.JSONDecodeError):
+            def field(name: str, default: str) -> str:
+                match = re.search(rf'"{name}"\s*:\s*"((?:\\.|[^"\\])*)', compact)
+                return match.group(1).replace('\\"', '"') if match else default
+
+            result = {
+                "pulse_check": field("pulse_check", "The transcript was received, but the model returned incomplete structured output."),
+                "green_signals": ["Review the source transcript for positive operating signals."],
+                "red_signals": ["Review the source transcript for risks and uncertainties."],
+                "future_horizon": ["Review the source transcript for forward-looking plans."],
+                "data_spotlight": ["Review the source transcript for reported metrics."],
+                "speakers": [],
+                "company": field("company", "Unknown"),
+                "period": field("period", "Unknown"),
+            }
     if not isinstance(result, dict):
         raise ValueError("LLM returned an invalid transcript analysis.")
     return result

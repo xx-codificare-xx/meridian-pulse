@@ -1,7 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { jsPDF } from "jspdf";
-import pptxgen from "pptxgenjs";
 import Chatbot from "./Chatbot";
 import { analyzeTranscript, readBundledTranscripts, readLastRun, readRecentArticles, readRecentFilings } from "./firebaseData";
 
@@ -15,6 +13,37 @@ const TAGS = {
   "Member Impact": 0.05,
   "Women in Healthcare": 0.1,
 };
+const OTHER_TAG = "Others";
+const FILTER_TAGS = [...Object.keys(TAGS), OTHER_TAG];
+
+function canonicalTitle(title) {
+  return (title || "")
+    .toLowerCase()
+    .replace(/^google\s*-\s*[^:]+:\s*/, "")
+    .replace(/\s+-\s+(stat|fierce healthcare|yahoo)\s*$/, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function dedupeArticles(items) {
+  const seen = new Set();
+  return items.filter((item) => {
+    const key = canonicalTitle(item.title) || item.url;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function matchedTags(item) {
+  const tags = Array.isArray(item.tags_matched)
+    ? item.tags_matched
+    : Object.entries(item.tags_evaluated || {})
+      .filter(([, matched]) => matched)
+      .map(([tag]) => tag);
+  return tags.length > 0 ? tags : [OTHER_TAG];
+}
 
 function urgency(item, selectedTags) {
   return Math.min(
@@ -25,10 +54,16 @@ function urgency(item, selectedTags) {
 
 function DataCard({ item, selectedTags, filing = false }) {
   const score = urgency(item, selectedTags);
+  const categories = matchedTags(item);
   return (
     <article className="data-card">
       <div className="card-meta">{item.source || item.company || "SEC EDGAR"} · {item.published || item.filed_at || "Date unavailable"}</div>
       <h2>{item.title}</h2>
+      {categories.length > 0 && (
+        <div className="card-tags" aria-label="Article categories">
+          {categories.map((tag) => <span className="card-tag" key={tag}>{tag}</span>)}
+        </div>
+      )}
       <p>{item.summary || item.ai_summary || "No summary available."}</p>
       {(item.reasoning || item.ai_summary) && <small className="ai-note">AI assessment — review against the original source.</small>}
       <div className="card-bottom">
@@ -78,7 +113,7 @@ function downloadText(content, filename, type = "text/plain") {
 }
 
 async function downloadBundledTranscript(name) {
-  const apiBase = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+  const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
   const response = await fetch(`${apiBase}/transcripts/bundled/${encodeURIComponent(name)}`);
   if (!response.ok) throw new Error("Transcript download failed.");
   downloadText(await response.text(), name);
@@ -91,43 +126,11 @@ function exportExcel(items, filename) {
   XLSX.writeFile(workbook, filename);
 }
 
-function exportPdf(items, filename) {
-  const pdf = new jsPDF();
-  pdf.setFontSize(16);
-  pdf.text("Meridian Pulse Intelligence", 14, 18);
-  pdf.setFontSize(10);
-  let y = 30;
-  items.slice(0, 30).forEach((item) => {
-    const lines = pdf.splitTextToSize(`${item.title}\n${item.summary || item.ai_summary || ""}`, 180);
-    if (y + lines.length * 5 > 280) {
-      pdf.addPage();
-      y = 18;
-    }
-    pdf.text(lines, 14, y);
-    y += lines.length * 5 + 7;
-  });
-  pdf.save(filename);
-}
-
-function exportPowerPoint(items, filename) {
-  const presentation = new pptxgen();
-  presentation.layout = "LAYOUT_WIDE";
-  items.slice(0, 20).forEach((item) => {
-    const slide = presentation.addSlide();
-    slide.addText(item.title || "Meridian Pulse", { x: 0.5, y: 0.5, w: 12, h: 0.7, fontSize: 22, bold: true });
-    slide.addText(item.summary || item.ai_summary || "No summary available.", { x: 0.5, y: 1.5, w: 12, h: 2.5, fontSize: 16, breakLine: false });
-    slide.addText(item.url || item.viewer_url || "", { x: 0.5, y: 6.7, w: 12, h: 0.3, fontSize: 9, color: "1B4F8A" });
-  });
-  presentation.writeFile({ fileName: filename });
-}
-
 function ExportButtons({ items, prefix }) {
   return (
     <div className="export-buttons">
       <button type="button" onClick={() => downloadCsv(items, `${prefix}.csv`)}>CSV</button>
       <button type="button" onClick={() => exportExcel(items, `${prefix}.xlsx`)}>Excel</button>
-      <button type="button" onClick={() => exportPdf(items, `${prefix}.pdf`)}>PDF</button>
-      <button type="button" onClick={() => exportPowerPoint(items, `${prefix}.pptx`)}>PowerPoint</button>
     </div>
   );
 }
@@ -136,17 +139,27 @@ function TranscriptPage() {
   const [file, setFile] = useState(null);
   const [analysis, setAnalysis] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [busyAction, setBusyAction] = useState("");
   const [error, setError] = useState("");
   const [bundled, setBundled] = useState([]);
+  const [selectedBundled, setSelectedBundled] = useState("");
+  const [bundledLoading, setBundledLoading] = useState(true);
 
   useEffect(() => {
-    readBundledTranscripts().then(setBundled).catch(() => setBundled([]));
+    readBundledTranscripts()
+      .then((names) => {
+        setBundled(names);
+        setSelectedBundled(names[0] || "");
+      })
+      .catch((requestError) => setError(requestError.message))
+      .finally(() => setBundledLoading(false));
   }, []);
 
   async function submit(event) {
     event.preventDefault();
     if (!file || busy) return;
     setBusy(true);
+    setBusyAction("upload");
     setError("");
     try {
       setAnalysis(await analyzeTranscript(file));
@@ -154,6 +167,28 @@ function TranscriptPage() {
       setError(requestError.message);
     } finally {
       setBusy(false);
+      setBusyAction("");
+    }
+  }
+
+  async function analyzeBundled() {
+    if (!selectedBundled || busy) return;
+    setBusy(true);
+    setBusyAction("selected");
+    setError("");
+    try {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || "/api";
+      const response = await fetch(`${apiBase}/transcripts/bundled/${encodeURIComponent(selectedBundled)}`);
+      if (!response.ok) throw new Error("Transcript download failed.");
+      const text = await response.text();
+      const selectedFile = new File([text], selectedBundled, { type: "text/plain" });
+      setFile(selectedFile);
+      setAnalysis(await analyzeTranscript(selectedFile));
+    } catch (requestError) {
+      setError(requestError.message);
+    } finally {
+      setBusy(false);
+      setBusyAction("");
     }
   }
 
@@ -163,14 +198,28 @@ function TranscriptPage() {
       <p className="muted">Upload a TXT, PDF, or DOCX transcript for in-memory analysis. Files are not stored.</p>
       <form className="upload-form" onSubmit={submit}>
         <input type="file" accept=".txt,.pdf,.docx" onChange={(event) => setFile(event.target.files?.[0] || null)} />
-        <button type="submit" disabled={!file || busy}>{busy ? "Analyzing..." : "Analyze transcript"}</button>
+        <button type="submit" disabled={!file || busy}>
+          {busyAction === "upload" ? "Analyzing upload..." : "Analyze transcript"}
+        </button>
       </form>
-      {bundled.length > 0 && (
-        <div className="bundled-transcripts">
-          <h2>Bundled transcripts</h2>
-          {bundled.map((name) => <button type="button" key={name} onClick={() => downloadBundledTranscript(name)}>{name} ↓</button>)}
-        </div>
-      )}
+      <div className="bundled-transcripts">
+          <h2>Analyze an existing transcript</h2>
+          {bundledLoading && <p className="status">Loading documents from assets/data...</p>}
+          {bundled.length === 0 && <p className="status">No bundled transcripts could be loaded.</p>}
+          <div className="bundled-picker">
+            <label>Select an existing transcript ({bundled.length} available)
+              <select value={selectedBundled} onChange={(event) => setSelectedBundled(event.target.value)}>
+                {!selectedBundled && <option value="">Choose a document...</option>}
+                {bundled.map((name) => <option value={name} key={name}>{name}</option>)}
+              </select>
+            </label>
+            <button type="button" disabled={!selectedBundled || busy} onClick={analyzeBundled}>
+              {busyAction === "selected" ? "Analyzing selected..." : "Analyze selected"}
+            </button>
+            <button type="button" disabled={!selectedBundled} onClick={() => downloadBundledTranscript(selectedBundled)}>Download</button>
+          </div>
+          {selectedBundled && <p className="muted">Selected: {selectedBundled}</p>}
+      </div>
       {error && <p className="error">{error}</p>}
       {analysis && (
         <div className="analysis">
@@ -217,7 +266,7 @@ export default function App() {
   useEffect(() => {
     Promise.all([readRecentArticles(), readRecentFilings(), readLastRun()])
       .then(([nextArticles, nextFilings, nextLastRun]) => {
-        setArticles(nextArticles.sort((a, b) => (b.published_at || "").localeCompare(a.published_at || "")));
+        setArticles(dedupeArticles(nextArticles.sort((a, b) => (b.published_at || "").localeCompare(a.published_at || ""))));
         setFilings(nextFilings.sort((a, b) => (b.filed_at || "").localeCompare(a.filed_at || "")));
         setLastRun(nextLastRun);
       })
@@ -227,6 +276,12 @@ export default function App() {
 
   const rankedArticles = useMemo(
     () => [...articles]
+      .filter((item) => {
+        const categories = matchedTags(item);
+      return selectedTags.length === 0
+        ? categories.includes(OTHER_TAG)
+        : selectedTags.some((tag) => categories.includes(tag));
+    })
       .filter((item) => urgencyFilter === "all" || (
         urgency(item, selectedTags) >= Number(urgencyFilter)
       ))
@@ -250,6 +305,7 @@ export default function App() {
     setSelectedTags((current) => current.includes(tag)
       ? current.filter((value) => value !== tag)
       : current.length < 3 ? [...current, tag] : current);
+    setArticlePage(1);
   }
 
   const updatedText = lastRun?.finished_at
@@ -269,10 +325,10 @@ export default function App() {
       {activeTab === "Urgency Dashboard" && (
         <section className="content">
           <h1>Urgency Dashboard</h1>
-          <p className="muted">Fresh healthcare intelligence from the last 48 hours.</p>
+          <p className="muted">Fresh healthcare intelligence from the last 48 hours. Select a category to show only related articles.</p>
           <p className="freshness">{updatedText}</p>
           <div className="tag-filters">
-            {Object.keys(TAGS).map((tag) => <button type="button" className={selectedTags.includes(tag) ? "selected" : ""} onClick={() => toggleTag(tag)} key={tag}>{tag}</button>)}
+            {FILTER_TAGS.map((tag) => <button type="button" className={selectedTags.includes(tag) ? "selected" : ""} onClick={() => toggleTag(tag)} key={tag}>{tag}</button>)}
           </div>
           <div className="toolbar">
             <label>Minimum urgency
@@ -290,7 +346,7 @@ export default function App() {
       {activeTab === "SEC Intelligence" && (
         <section className="content">
           <h1>SEC Intelligence</h1>
-          <p className="muted">Recent filings from tracked healthcare companies.</p>
+          <p className="muted">SEC filings from tracked healthcare companies retained by the intelligence pipeline.</p>
           <p className="freshness">{updatedText}</p>
           <div className="toolbar">
             <label>Company
@@ -312,7 +368,23 @@ export default function App() {
       )}
       {activeTab === "Transcripts" && <TranscriptPage />}
       {activeTab === "Behind Meridian Pulse" && (
-        <section className="placeholder"><h1>Behind Meridian Pulse</h1><p>Meridian Pulse combines public healthcare reporting, SEC filings, and AI-assisted analysis for research support.</p><p className="muted">AI output is informational and should be checked against the linked source.</p></section>
+        <section className="placeholder">
+          <h1>Behind Meridian Pulse</h1>
+          <h2>Akansha Rawat</h2>
+          <p className="muted">Healthcare AI and Strategy</p>
+          <p>
+            Meridian Pulse was built to solve a real problem: healthcare strategy
+            teams spending hours on manual news research. It brings that work
+            down to minutes using urgency scoring, live data pipelines, and
+            intelligent filtering.
+          </p>
+          <div className="linkedin-card">
+            <a href="https://www.linkedin.com/in/akansharawat01/" target="_blank" rel="noreferrer">
+              <img src={`${import.meta.env.BASE_URL}linkedin.png`} alt="Akansha Rawat LinkedIn QR code" />
+            </a>
+            <p><a href="mailto:amrawat@uci.edu">Email</a>{" · "}<a href="https://www.linkedin.com/in/akansharawat01/" target="_blank" rel="noreferrer">LinkedIn</a></p>
+          </div>
+        </section>
       )}
       <footer className="site-footer">
         <span>Public healthcare intelligence research tool.</span>

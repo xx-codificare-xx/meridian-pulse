@@ -1,7 +1,30 @@
 import { useState } from "react";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 const CHAT_SHARED_SECRET = import.meta.env.VITE_CHAT_SHARED_SECRET || "";
+
+function renderMessage(content) {
+  return content.split("\n").map((line, index) => {
+    const key = `${index}-${line}`;
+    if (line.startsWith("### ")) return <h4 key={key}>{line.slice(4)}</h4>;
+    if (line.startsWith("## ")) return <h3 key={key}>{line.slice(3)}</h3>;
+    if (line.startsWith("# ")) return <h3 key={key}>{line.slice(2)}</h3>;
+    if (line.startsWith("- ") || line.startsWith("* ")) {
+      return <div className="chat-list-item" key={key}>• {formatInline(line.slice(2))}</div>;
+    }
+    if (!line.trim()) return <br key={key} />;
+    return <p key={key}>{formatInline(line)}</p>;
+  });
+}
+
+function formatInline(text) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return parts.map((part, index) => (
+    part.startsWith("**") && part.endsWith("**")
+      ? <strong key={`${index}-${part}`}>{part.slice(2, -2)}</strong>
+      : part
+  ));
+}
 
 export default function Chatbot({ dark = false, articleContext = [] }) {
   const [open, setOpen] = useState(false);
@@ -62,7 +85,7 @@ export default function Chatbot({ dark = false, articleContext = [] }) {
             )}
             {messages.map((message, index) => (
               <div className={`chat-message ${message.role}`} key={`${message.role}-${index}`}>
-                {message.content}
+                {message.role === "assistant" ? renderMessage(message.content) : message.content}
               </div>
             ))}
             {busy && <div className="chat-message assistant">Connecting to Meridian...</div>}

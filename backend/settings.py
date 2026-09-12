@@ -17,10 +17,7 @@ def _csv(value: str, default: str) -> tuple[str, ...]:
 class Settings:
     llm_provider: str = os.getenv("LLM_PROVIDER", "openai")
     llm_api_mode: str = os.getenv("LLM_API_MODE", os.getenv("API_MODE", "aicredits"))
-    llm_api_key: str = os.getenv(
-        "LLM_API_KEY",
-        os.getenv("AI_CREDITS_KEY", ""),
-    )
+    llm_api_key: str = os.getenv("LLM_API_KEY") or os.getenv("AI_CREDITS_KEY", "")
     openai_direct_key: str = os.getenv("OPENAI_DIRECT_KEY", "")
     llm_base_url: str = os.getenv(
         "LLM_BASE_URL",

@@ -17,13 +17,15 @@ services:
       context: .
       dockerfile: Dockerfile
     environment:
-      FIREBASE_DATABASE_URL: https://demo-meridian-pulse-default-rtdb.firebaseio.com
-      FIREBASE_DATABASE_EMULATOR_HOST: firebase-emulator:9000
-      CORS_ORIGINS: http://localhost:4173
+      FIREBASE_DATABASE_URL: ${FIREBASE_DATABASE_URL:-https://meridian-pulse-94152-default-rtdb.firebaseio.com}
+      FIREBASE_SA_B64: ${FIREBASE_SA_B64:-}
+      CORS_ORIGINS: http://localhost:4173,http://localhost:4174,http://localhost:5173
       LLM_API_MODE: ${LLM_API_MODE:-aicredits}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_MODEL_PREFILTER: ${LLM_MODEL_PREFILTER:-gpt-4o-mini}
       LLM_MODEL_SCORER: ${LLM_MODEL_SCORER:-claude-sonnet-4.6}
+      LLM_API_KEY: ${LLM_API_KEY:-}
+      LLM_BASE_URL: ${LLM_BASE_URL:-https://api.aicredits.in/v1}
       AI_CREDITS_KEY: ${AI_CREDITS_KEY:-}
       OPENAI_DIRECT_KEY: ${OPENAI_DIRECT_KEY:-}
     ports:
@@ -36,9 +38,9 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_BASE_URL: http://localhost:8000
-        VITE_FIREBASE_DATABASE_URL: http://localhost:9000
+        VITE_API_BASE_URL: /api
+        VITE_FIREBASE_DATABASE_URL: ${FIREBASE_DATABASE_URL:-https://meridian-pulse-94152-default-rtdb.firebaseio.com}
     ports:
-      - "4173:80"
+      - "4174:80"
     depends_on:
       - backend

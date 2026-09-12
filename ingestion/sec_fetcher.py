@@ -110,6 +110,24 @@ RELEVANT_FORMS = {"8-K", "10-K", "10-Q", "DEF 14A"}
 MAX_FILING_BYTES = 5 * 1024 * 1024
 
 
+def _cik_parts(cik: str) -> tuple[str, str]:
+    digits = str(cik).strip()
+    if not digits.isdigit():
+        raise ValueError(f"Invalid SEC CIK: {cik!r}")
+    return digits.zfill(10), str(int(digits))
+
+
+def _get_sec_json(url: str) -> dict:
+    response = requests.get(url, headers=SEC_HEADERS, timeout=10)
+    response.raise_for_status()
+    content_type = response.headers.get("content-type", "").lower()
+    if "json" not in content_type:
+        raise ValueError(f"SEC returned non-JSON content for {url}")
+    data = response.json()
+    time.sleep(SEC_RATE_LIMIT_SLEEP)
+    return data
+
+
 def download_filing_text(url: str) -> str | None:
     """Download at most 5 MB of filing HTML and extract readable text."""
     try:
@@ -160,21 +178,20 @@ def summarize_filing(article: dict) -> dict:
 
 
 def get_company_filings(company_name: str, cik: str) -> list:
-    cik_padded = cik.zfill(10)
+    cik_padded, cik_plain = _cik_parts(cik)
     url        = f"{SEC_SUBMISSIONS_BASE}/CIK{cik_padded}.json"
 
     try:
-        r = requests.get(url, headers=SEC_HEADERS, timeout=10)
-        r.raise_for_status()
-        data = r.json()
-    except Exception as e:
-        print(f"[SEC] Failed for {company_name}: {e}")
+        data = _get_sec_json(url)
+    except (requests.RequestException, ValueError) as error:
+        print(f"[SEC] Failed for {company_name}: {error}")
         return []
 
     filings    = data.get("filings", {}).get("recent", {})
     forms      = filings.get("form", [])
     dates      = filings.get("filingDate", [])
     accessions = filings.get("accessionNumber", [])
+    documents  = filings.get("primaryDocument", [])
 
     articles = []
     count    = 0
@@ -185,7 +202,6 @@ def get_company_filings(company_name: str, cik: str) -> list:
         if count >= MAX_ARTICLES_PER_SOURCE:
             break
 
-        cik_plain  = str(int(cik))
         viewer_url = (
             f"https://www.sec.gov/cgi-bin/browse-edgar?"
             f"action=getcompany&CIK={cik_plain}"
@@ -193,7 +209,11 @@ def get_company_filings(company_name: str, cik: str) -> list:
         )
 
         accession_clean = accessions[i].replace("-", "")
+        document = documents[i] if i < len(documents) else ""
         doc_url = (
+            f"https://www.sec.gov/Archives/edgar/data/"
+            f"{cik_plain}/{accession_clean}/{document}"
+            if document else
             f"https://www.sec.gov/Archives/edgar/data/"
             f"{cik_plain}/{accession_clean}/{accessions[i]}-index.htm"
         )
@@ -220,7 +240,6 @@ def get_company_filings(company_name: str, cik: str) -> list:
             "summary_unavailable": False,
         })
         count += 1
-        time.sleep(SEC_RATE_LIMIT_SLEEP)
 
     print(f"[SEC] {company_name}: {len(articles)} filings")
     return articles

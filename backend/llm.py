@@ -5,7 +5,7 @@ from config import LLM_MODELS
 from .settings import settings
 
 
-def get_llm(role: str = "scorer"):
+def get_llm(role: str = "scorer", max_tokens: int = 512):
     from langchain_openai import ChatOpenAI
     from config import LLM_MODEL_PREFILTER, LLM_MODEL_SCORER
 
@@ -32,22 +32,24 @@ def get_llm(role: str = "scorer"):
     kwargs = {
         "model": model,
         "api_key": api_key,
-        "max_tokens": 512,
+        "max_tokens": max_tokens,
     }
     if base_url:
         kwargs["base_url"] = base_url
     return ChatOpenAI(**kwargs)
 
 
-def ask_llm(prompt: str, role: str = "scorer") -> str:
-    response, _ = ask_llm_with_usage(prompt, role)
+def ask_llm(prompt: str, role: str = "scorer", max_tokens: int = 512) -> str:
+    response, _ = ask_llm_with_usage(prompt, role, max_tokens)
     return response
 
 
-def ask_llm_with_usage(prompt: str, role: str = "scorer") -> tuple[str, int]:
+def ask_llm_with_usage(
+    prompt: str, role: str = "scorer", max_tokens: int = 512
+) -> tuple[str, int]:
     from langchain_core.messages import HumanMessage
 
-    response = get_llm(role).invoke([HumanMessage(content=prompt)])
+    response = get_llm(role, max_tokens=max_tokens).invoke([HumanMessage(content=prompt)])
     usage = getattr(response, "usage_metadata", {}) or {}
     tokens = usage.get("total_tokens")
     if tokens is None:
