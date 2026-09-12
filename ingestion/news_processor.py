@@ -37,8 +37,11 @@ def fetch_all_news(selected_tags: list | None = None, progress_callback=None) ->
             continue
 
         seen_url = server_collection("seen").child(key).get() or {}
+        existing_collection = "sec_filings" if article.get("type") == "sec_filing" else "articles"
+        existing = db.child(existing_collection).child(key).get() or {}
         seen_title = server_collection("seen_title").child(title_key).get()
-        if seen_url.get("suppressed") or seen_title is not None:
+        retry_failed = existing.get("scored") is False
+        if (seen_url.get("suppressed") or seen_title is not None) and not retry_failed:
             skipped += 1
             continue
 
@@ -63,16 +66,17 @@ def fetch_all_news(selected_tags: list | None = None, progress_callback=None) ->
         article["published_at"] = article.get("published_at", started_at)
         collection = "sec_filings" if article.get("type") == "sec_filing" else "articles"
         db.child(collection).child(article_id).update(_firebase_data(article))
-        server_collection("seen").child(article_id).update(
-            {
-                "seen_at": started_at.isoformat(),
-                "suppressed": False,
-                "type": article.get("type"),
-            }
-        )
-        server_collection("seen_title").child(title_id).update(
-            {"seen_at": started_at.isoformat()}
-        )
+        if article.get("scored", True):
+            server_collection("seen").child(article_id).update(
+                {
+                    "seen_at": started_at.isoformat(),
+                    "suppressed": False,
+                    "type": article.get("type"),
+                }
+            )
+            server_collection("seen_title").child(title_id).update(
+                {"seen_at": started_at.isoformat()}
+            )
 
     db.child("meta").child("last_run").update(
         {

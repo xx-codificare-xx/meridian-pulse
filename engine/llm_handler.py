@@ -35,7 +35,7 @@ def get_llm(role="scorer"):
     )
 
     api_mode = os.getenv("LLM_API_MODE", os.getenv("API_MODE", API_MODE)).lower()
-    ai_credits_key = os.getenv("LLM_API_KEY", os.getenv("AI_CREDITS_KEY", ""))
+    ai_credits_key = os.getenv("LLM_API_KEY") or os.getenv("AI_CREDITS_KEY", "")
     openai_direct_key = os.getenv("OPENAI_DIRECT_KEY", "")
     ai_credits_base_url = os.getenv(
         "LLM_BASE_URL",

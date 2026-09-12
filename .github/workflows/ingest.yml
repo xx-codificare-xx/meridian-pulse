@@ -19,6 +19,11 @@ jobs:
           FIREBASE_SA_B64: ${{ secrets.FIREBASE_SA_B64 }}
           FIREBASE_DATABASE_URL: https://meridian-pulse-94152-default-rtdb.firebaseio.com
           AI_CREDITS_KEY: ${{ secrets.AI_CREDITS_KEY }}
+          LLM_API_KEY: ${{ secrets.AI_CREDITS_KEY }}
+          LLM_API_MODE: aicredits
+          LLM_BASE_URL: https://api.aicredits.in/v1
+          LLM_MODEL_PREFILTER: gpt-4o-mini
+          LLM_MODEL_SCORER: claude-sonnet-4.6
           LLM_PROVIDER: openai
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
         run: python -m ingestion.news_processor
