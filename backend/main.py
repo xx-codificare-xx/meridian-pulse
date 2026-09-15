@@ -58,7 +58,8 @@ async def security_headers(request: Request, call_next):
         "default-src 'self'; "
         "connect-src 'self' https://meridian-pulse-94152-default-rtdb.firebaseio.com "
         "https://*.onrender.com http://localhost:8000 http://localhost:9000; "
-        "script-src 'self'; style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; frame-ancestors 'none'"
     )
     return response
