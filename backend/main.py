@@ -134,6 +134,14 @@ def chat(
     return ChatResponse(response=response)
 
 
+@app.get("/chat")
+def chat_info() -> dict[str, str]:
+    return {
+        "message": "Use POST /chat with a JSON body containing query, history, and article_context.",
+        "docs": "/docs",
+    }
+
+
 @app.post("/transcripts/analyze")
 async def transcript_analyze(upload: UploadFile = File(...)) -> dict:
     content = await upload.read(settings.max_upload_bytes + 1)
