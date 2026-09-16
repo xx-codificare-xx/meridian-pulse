@@ -52,7 +52,7 @@ LLM_MODELS = {
 LLM_MODEL_PREFILTER = os.getenv("LLM_MODEL_PREFILTER", "gpt-4o-mini")
 LLM_MODEL_SCORER = os.getenv(
     "LLM_MODEL_SCORER",
-    "gpt-4o-mini",
+    "claude-sonnet-4.6",
 )
 
 # Switch this one line to change how AI calls are made

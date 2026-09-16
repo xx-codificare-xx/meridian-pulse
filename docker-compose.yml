@@ -23,7 +23,7 @@ services:
       LLM_API_MODE: ${LLM_API_MODE:-aicredits}
       LLM_PROVIDER: ${LLM_PROVIDER:-openai}
       LLM_MODEL_PREFILTER: ${LLM_MODEL_PREFILTER:-gpt-4o-mini}
-      LLM_MODEL_SCORER: ${LLM_MODEL_SCORER:-gpt-4o-mini}
+      LLM_MODEL_SCORER: ${LLM_MODEL_SCORER:-claude-sonnet-4.6}
       LLM_API_KEY: ${LLM_API_KEY:-}
       LLM_BASE_URL: ${LLM_BASE_URL:-https://api.aicredits.in/v1}
       AI_CREDITS_KEY: ${AI_CREDITS_KEY:-}

@@ -23,7 +23,7 @@ jobs:
           LLM_API_MODE: aicredits
           LLM_BASE_URL: https://api.aicredits.in/v1
           LLM_MODEL_PREFILTER: gpt-4o-mini
-          LLM_MODEL_SCORER: gpt-4o-mini
+          LLM_MODEL_SCORER: claude-sonnet-4.6
           LLM_PROVIDER: openai
           SEC_USER_AGENT: ${{ secrets.SEC_USER_AGENT }}
         run: python -m ingestion.news_processor
