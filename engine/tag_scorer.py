@@ -26,7 +26,16 @@ class _ProviderFallback:
         try:
             return self.primary.invoke(messages)
         except Exception as error:
-            if "balance_insufficient" not in str(error).lower():
+            text = str(error).lower()
+            if not any(
+                marker in text
+                for marker in (
+                    "balance_insufficient",
+                    "insufficient_quota",
+                    "insufficient balance",
+                    "error code: 402",
+                )
+            ):
                 raise
             return self.fallback.invoke(messages)
 

@@ -56,7 +56,7 @@ def ask_llm_with_usage(
     except Exception as error:
         if (
             settings.llm_api_mode not in {"aicredits", "ai_credits"}
-            or "balance_insufficient" not in str(error).lower()
+            or not _is_provider_credit_error(error)
             or role not in {"prefilter", "scorer"}
         ):
             raise
@@ -75,3 +75,13 @@ def ask_llm_with_usage(
     if not tokens:
         tokens = max(1, (len(prompt) + len(response.content)) // 4)
     return response.content.strip(), int(tokens)
+
+
+def _is_provider_credit_error(error: Exception) -> bool:
+    text = str(error).lower()
+    return (
+        "balance_insufficient" in text
+        or "insufficient_quota" in text
+        or "insufficient balance" in text
+        or "error code: 402" in text
+    )
