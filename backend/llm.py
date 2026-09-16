@@ -49,7 +49,25 @@ def ask_llm_with_usage(
 ) -> tuple[str, int]:
     from langchain_core.messages import HumanMessage
 
-    response = get_llm(role, max_tokens=max_tokens).invoke([HumanMessage(content=prompt)])
+    message = HumanMessage(content=prompt)
+    client = get_llm(role, max_tokens=max_tokens)
+    try:
+        response = client.invoke([message])
+    except Exception as error:
+        if (
+            settings.llm_api_mode not in {"aicredits", "ai_credits"}
+            or "balance_insufficient" not in str(error).lower()
+            or role not in {"prefilter", "scorer"}
+        ):
+            raise
+        from langchain_openai import ChatOpenAI
+        fallback = ChatOpenAI(
+            model="gpt-4o-mini",
+            api_key=settings.llm_api_key,
+            base_url=settings.llm_base_url,
+            max_tokens=max_tokens,
+        )
+        response = fallback.invoke([message])
     usage = getattr(response, "usage_metadata", {}) or {}
     tokens = usage.get("total_tokens")
     if tokens is None:

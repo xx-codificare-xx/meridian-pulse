@@ -17,6 +17,34 @@ def get_llm_client(role="scorer"):
     return get_llm(role=role)
 
 
+class _ProviderFallback:
+    def __init__(self, primary, fallback):
+        self.primary = primary
+        self.fallback = fallback
+
+    def invoke(self, messages):
+        try:
+            return self.primary.invoke(messages)
+        except Exception as error:
+            if "balance_insufficient" not in str(error).lower():
+                raise
+            return self.fallback.invoke(messages)
+
+
+def get_resilient_llm_client(role="scorer"):
+    from langchain_openai import ChatOpenAI
+    from engine.llm_handler import get_llm
+    from config import AI_CREDITS_BASE_URL
+    primary = get_llm(role=role)
+    fallback = ChatOpenAI(
+        model="gpt-4o-mini",
+        api_key=os.getenv("LLM_API_KEY") or os.getenv("AI_CREDITS_KEY", ""),
+        base_url=os.getenv("LLM_BASE_URL", AI_CREDITS_BASE_URL),
+        max_tokens=512,
+    )
+    return _ProviderFallback(primary, fallback)
+
+
 def batch_prefilter(articles: list, llm=None) -> list:
     """
     Send BATCH_SIZE articles in one API call.
@@ -72,7 +100,7 @@ Reply ONLY in this exact format with no other text:
 def score_single(article: dict, selected_tags: list, llm=None) -> dict:
     """Evaluate all tags; urgency is calculated by the client."""
     if llm is None:
-        llm = get_llm_client("scorer")
+        llm = get_resilient_llm_client("scorer")
 
     prompt = TAG_SCORING_PROMPT.format(
         title   = article.get("title", ""),
@@ -119,7 +147,7 @@ def score_all_articles(
 
     # ── Step 1: Batch pre-filter ──────────────────────────────────
     print(f"[Scorer] Pre-filtering {total} articles in batches of {BATCH_SIZE}...")
-    llm_filter  = get_llm_client("prefilter")
+    llm_filter  = get_resilient_llm_client("prefilter")
     relevant    = []
     filtered_out = 0
 
@@ -162,7 +190,7 @@ def score_all_articles(
     score_idx = [0]
 
     def score_and_track(article):
-        llm    = get_llm_client("scorer")
+        llm    = get_resilient_llm_client("scorer")
         result = score_single(article, selected_tags, llm)
         score_idx[0] += 1
         if progress_callback:
