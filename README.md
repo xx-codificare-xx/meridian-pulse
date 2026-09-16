@@ -125,8 +125,9 @@ URLs use the unpadded CIK and the accession number without dashes in the path.
 The SEC fetcher preserves the parallel array indexes returned by the API and
 uses each filing's `primaryDocument` for its direct document URL.
 
-The SEC tab supports company and form filters, dynamic pagination, and CSV and
-Excel exports.
+The SEC tab shows the retained filings for all tracked companies with dynamic
+pagination and CSV and Excel exports. The dashboard category filters do not
+affect SEC filings.
 
 ### Transcripts
 
@@ -172,6 +173,50 @@ RSS and SEC sources are configured in `sources.yaml`. Firebase rules are in
 
 The API applies upload limits, PDF page limits, chatbot rate limits, daily
 token budgeting, and security response headers.
+
+## Tools and techniques
+
+| Tool or technique | Use in Meridian Pulse |
+| --- | --- |
+| React | Component-based public dashboard UI |
+| Vite | Frontend development and production bundling |
+| FastAPI | Python API for chatbot and transcript analysis |
+| Render | Hosts the always-available backend API |
+| GitHub Pages | Hosts the public frontend website |
+| Firebase Realtime Database | Public article/filing reads and protected server writes |
+| GitHub Actions | Twice-daily news and SEC ingestion plus deployment workflows |
+| Docker and Docker Compose | Reproducible local frontend, backend, and emulator stack |
+| Nginx | Static frontend serving and local same-origin `/api` reverse proxy |
+| SEC EDGAR API | Company submissions and filing document metadata |
+| RSS | Publisher and topic-feed news collection |
+| CIK normalization | Correct zero-padded SEC submissions requests and archive URLs |
+| OpenAI-compatible API | Common client interface for AI Credits models |
+| `gpt-4o-mini` | Cost-conscious AI model for chatbot, prefiltering, and tagging |
+| Retrieval-augmented generation (RAG) | Chat prompt context is assembled from current Firebase article records and bounded conversation history |
+| LLM classification | Assigns the seven dashboard categories and reasoning to each article |
+| URL/title canonicalization | Suppresses duplicate and syndicated stories |
+| Rate limiting and token budgets | Controls chatbot usage and provider spend |
+| In-memory processing | Analyzes transcript uploads without retaining uploaded files |
+| CSV and Excel export | Downloads dashboard and SEC results for analysis |
+
+## Reliability and daily operation
+
+The production system is intentionally split into independent services. GitHub
+Pages can continue serving the dashboard even when the Render API is waking or
+temporarily unavailable; Firebase continues serving public data; and GitHub
+Actions refreshes news, AI tags, and SEC filings on its schedule.
+
+The ingestion workflow runs at `10:00 UTC` and `22:00 UTC`. Each run fetches
+new RSS and SEC records, applies duplicate suppression, sends new articles
+through AI prefiltering and category scoring, and writes successful results to
+Firebase. Records whose AI scoring fails remain eligible for retry on a later
+run rather than being permanently marked as processed.
+
+For a production smoke test, check `/health`, open the GitHub Pages site, verify
+that today's article freshness timestamp changes after ingestion, and send a
+test chatbot request. If AI calls fail, inspect the provider key, model
+availability, and the GitHub Actions or Render deployment logs before changing
+application code.
 
 ## Deployment
 

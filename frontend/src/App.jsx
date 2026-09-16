@@ -258,8 +258,6 @@ export default function App() {
   const [error, setError] = useState("");
   const [lastRun, setLastRun] = useState(null);
   const [urgencyFilter, setUrgencyFilter] = useState("all");
-  const [companyFilter, setCompanyFilter] = useState("all");
-  const [formFilter, setFormFilter] = useState("all");
   const [articlePage, setArticlePage] = useState(1);
   const [filingPage, setFilingPage] = useState(1);
 
@@ -288,18 +286,10 @@ export default function App() {
       .sort((a, b) => urgency(b, selectedTags) - urgency(a, selectedTags)),
     [articles, selectedTags, urgencyFilter],
   );
-  const filteredFilings = useMemo(
-    () => filings.filter((item) => (
-      (companyFilter === "all" || item.company === companyFilter) &&
-      (formFilter === "all" || item.form_type === formFilter)
-    )),
-    [filings, companyFilter, formFilter],
-  );
+  const filteredFilings = filings;
   const pageSize = 12;
   const visibleArticles = rankedArticles.slice((articlePage - 1) * pageSize, articlePage * pageSize);
   const visibleFilings = filteredFilings.slice((filingPage - 1) * pageSize, filingPage * pageSize);
-  const companies = [...new Set(filings.map((item) => item.company).filter(Boolean))].sort();
-  const forms = [...new Set(filings.map((item) => item.form_type).filter(Boolean))].sort();
 
   function toggleTag(tag) {
     setSelectedTags((current) => current.includes(tag)
@@ -349,16 +339,6 @@ export default function App() {
           <p className="muted">SEC filings from tracked healthcare companies retained by the intelligence pipeline.</p>
           <p className="freshness">{updatedText}</p>
           <div className="toolbar">
-            <label>Company
-              <select value={companyFilter} onChange={(event) => { setCompanyFilter(event.target.value); setFilingPage(1); }}>
-                <option value="all">All</option>{companies.map((company) => <option key={company}>{company}</option>)}
-              </select>
-            </label>
-            <label>Form
-              <select value={formFilter} onChange={(event) => { setFormFilter(event.target.value); setFilingPage(1); }}>
-                <option value="all">All</option>{forms.map((form) => <option key={form}>{form}</option>)}
-              </select>
-            </label>
             <ExportButtons items={filteredFilings} prefix="meridian-pulse-sec-filings" />
           </div>
           {loading && <p className="status">Loading Firebase data...</p>}

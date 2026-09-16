@@ -14,7 +14,7 @@ services:
       - key: LLM_MODEL_PREFILTER
         sync: false
       - key: LLM_MODEL_SCORER
-        value: claude-sonnet-4.6
+        value: gpt-4o-mini
       - key: LLM_API_KEY
         sync: false
       - key: LLM_BASE_URL
