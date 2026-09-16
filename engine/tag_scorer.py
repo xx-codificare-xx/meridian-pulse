@@ -34,6 +34,8 @@ class _ProviderFallback:
                     "insufficient_quota",
                     "insufficient balance",
                     "error code: 402",
+                    "api key budget exceeded",
+                    "budget exceeded",
                 )
             ):
                 raise

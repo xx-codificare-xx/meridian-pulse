@@ -84,4 +84,6 @@ def _is_provider_credit_error(error: Exception) -> bool:
         or "insufficient_quota" in text
         or "insufficient balance" in text
         or "error code: 402" in text
+        or "api key budget exceeded" in text
+        or "budget exceeded" in text
     )
